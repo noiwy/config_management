@@ -18,8 +18,15 @@
 - Приглашение к вводу содержит имя VFS (`VFS>`).
 
 ### Команды
-- `ls [аргументы]` — заглушка, выводит имя команды и аргументы.
-- `cd [аргументы]` — заглушка, выводит имя команды и аргументы.
+- `ls` — показывает содержимое текущей папки. Папки помечаются символом `/` в конце имени.
+- `cd <путь>` — переход в другую папку. Поддерживаются:
+  - абсолютные пути (начинаются с `/`);
+  - относительные пути (от текущей папки);
+  - `..` — переход на уровень вверх;
+  - `/` — переход в корень.
+- `whoami` — выводит имя текущего пользователя.
+- `uname` — выводит информацию о системе (название и версию).
+- `clear` — очищает экран консоли.
 - `conf-dump` — служебная команда, выводит текущие параметры эмулятора в формате «ключ = значение».
 - `exit` — выход из эмулятора.
 
@@ -41,6 +48,8 @@
 - Ошибка в стартовом скрипте → сообщение с указанием строки, остановка.
 - Файл VFS не найден → сообщение об ошибке, остановка.
 - Файл VFS не является ZIP-архивом → сообщение об ошибке, остановка.
+- Папка для `cd` не найдена → сообщение об ошибке.
+- `cd` указан на файл, а не папку → сообщение об ошибке.
 
 ### Виртуальная файловая система (VFS)
 - Загружается при запуске из ZIP-архива, указанного в `--vfs`.
@@ -105,7 +114,7 @@ python src/main.py --vfs vfs_deep.zip
 
 ### Пример 1. Запуск с параметрами и выполнение команд вручную
 ```
-> python src/main.py --vfs my_vfs.zip --script start.txt
+python src/main.py --vfs my_vfs.zip --script start.txt
 === Параметры эмулятора ===
 vfs_name    = VFS
 vfs_path    = my_vfs.zip
@@ -149,7 +158,7 @@ VFS> abracadabra
 
 ### Пример 4. Файл скрипта не найден
 ```
-> python src/main.py --script no_such_file.txt
+python src/main.py --script no_such_file.txt
 === Параметры эмулятора ===
 vfs_name    = VFS
 vfs_path    = None
@@ -162,7 +171,7 @@ script_path = no_such_file.txt
 
 ### Пример 5. Справка
 ```
-> python src/main.py --help
+python src/main.py --help
 usage: main.py [-h] [--vfs VFS_PATH] [--script SCRIPT_PATH]
 
 Эмулятор оболочки ОС (Вариант 19)
@@ -175,7 +184,7 @@ options:
 
 ### Пример 6. Загрузка VFS из ZIP-архива
 ```
-> python src/main.py --vfs vfs_deep.zip
+python src/main.py --vfs vfs_deep.zip
 === Параметры эмулятора ===
 vfs_name    = VFS
 vfs_path    = vfs_deep.zip
@@ -190,7 +199,7 @@ VFS> exit
 
 ### Пример 7. Ошибка загрузки VFS
 ```
-> python src/main.py --vfs no_such_file.zip
+python src/main.py --vfs no_such_file.zip
 === Параметры эмулятора ===
 vfs_name    = VFS
 vfs_path    = no_such_file.zip
@@ -199,4 +208,44 @@ script_path = None
 Добро пожаловать в эмулятор VFS!
 Введите 'exit' для выхода.
 Ошибка: файл VFS 'no_such_file.zip' не найден
+```
+
+### Пример 8. Работа с `ls` и `cd` в глубокой VFS
+```
+python src/main.py --vfs vfs_deep.zip
+```
+```
+VFS:/> ls
+home/
+readme.md
+VFS:/> cd home
+VFS:/home> ls
+user/
+VFS:/home> cd user/docs
+VFS:/home/user/docs> ls
+archive/
+notes.txt
+VFS:/home/user/docs> cd ..
+VFS:/home/user> cd /
+VFS:/> exit
+Выход.
+```
+
+### Пример 9. Команды `whoami`, `uname`, `clear`
+```
+VFS:/> whoami
+noiwy
+VFS:/> uname
+Windows
+10
+VFS:/> clear
+(экран очищается)
+```
+
+### Пример 10. Ошибки команды `cd`
+```
+VFS:/> cd no_such_folder
+Ошибка: папка 'no_such_folder' не найдена
+VFS:/> cd readme.md
+Ошибка: 'readme.md' — не папка
 ```
