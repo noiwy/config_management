@@ -2,7 +2,8 @@
 
 import argparse
 import shlex
-
+import zipfile
+from vfs import VFS
 
 class ShellEmulator:
     """Эмулятор командной строки."""
@@ -18,6 +19,7 @@ class ShellEmulator:
         self.vfs_name = vfs_name
         self.vfs_path = vfs_path
         self.script_path = script_path
+        self.vfs = None
         self.running = True
     
     def print_config(self):
@@ -27,6 +29,23 @@ class ShellEmulator:
         print(f"vfs_path    = {self.vfs_path}")
         print(f"script_path = {self.script_path}")
         print("===========================")
+
+    def load_vfs(self):
+        """Загружает VFS из ZIP-архива, если путь задан."""
+        if not self.vfs_path:
+            return
+        try:
+            self.vfs = VFS(name="my_vfs")
+            self.vfs.load_from_zip(self.vfs_path)
+            print(f"VFS '{self.vfs.name}' загружена: "
+                  f"{self.vfs.count_files()} файлов, "
+                  f"{self.vfs.count_dirs()} папок")
+        except FileNotFoundError:
+            print(f"Ошибка: файл VFS '{self.vfs_path}' не найден")
+            self.running = False
+        except zipfile.BadZipFile:
+            print(f"Ошибка: файл '{self.vfs_path}' не является ZIP-архивом")
+            self.running = False
 
     def parse_command(self, user_input):
         """Разбирает строку на команду и аргументы. Учитывает кавычки."""
@@ -118,7 +137,8 @@ class ShellEmulator:
         self.print_config()
         print(f"Добро пожаловать в эмулятор {self.vfs_name}!")
         print("Введите 'exit' для выхода.")
-
+        
+        self.load_vfs()
         self.run_script()
 
         while self.running:
