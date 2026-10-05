@@ -112,7 +112,10 @@ python src/main.py --vfs vfs_deep.zip
 - `run_vfs_deep.bat`
 
 ### Запуск тестов
-Тесты будут добавлены позже.
+```
+python -m unittest discover -s tests -v
+```
+Тесты находятся в папке `tests/` и проверяют парсер команд, загрузку VFS и команду `rm`.
 
 ## Примеры использования
 
@@ -217,8 +220,6 @@ script_path = None
 ### Пример 8. Работа с `ls` и `cd` в глубокой VFS
 ```
 python src/main.py --vfs vfs_deep.zip
-```
-```
 VFS:/> ls
 home/
 readme.md
@@ -257,8 +258,6 @@ VFS:/> cd readme.md
 ### Пример 11. Удаление файла из VFS
 ```
 python src/main.py --vfs vfs_deep.zip
-```
-```
 VFS:/> ls
 home/
 readme.md
