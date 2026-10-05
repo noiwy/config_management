@@ -1,7 +1,10 @@
+help
 ls
 cd /home
+ls
+rm /readme.md
+cd /
 ls
 whoami
 uname
 conf-dump
-clear

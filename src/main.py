@@ -163,6 +163,74 @@ class ShellEmulator:
         os.system("cls" if os.name == "nt" else "clear")
         return True
 
+
+    def _resolve_path(self, target):
+        """Разбирает путь. Возвращает (путь_родителя, имя) или None."""
+        if target.startswith("/"):
+            base = []
+            parts = [p for p in target.split("/") if p]
+        else:
+            base = list(self.current_path)
+            parts = [p for p in target.split("/") if p]
+        if not parts:
+            return None
+        for part in parts[:-1]:
+            if part == "..":
+                if base:
+                    base.pop()
+                continue
+            if part == ".":
+                continue
+            node = self._node_at(base)
+            if node is None or "children" not in node:
+                return None
+            if part not in node["children"]:
+                return None
+            if node["children"][part]["type"] != "dir":
+                return None
+            base.append(part)
+        return base, parts[-1]
+
+    def cmd_rm(self, args):
+        """Удаляет файл из VFS (только в памяти)."""
+        if self.vfs is None:
+            print("Ошибка: VFS не загружена")
+            return False
+        if not args:
+            print("Ошибка: не указан файл для удаления")
+            return False
+
+        resolved = self._resolve_path(args[0])
+        if resolved is None:
+            print(f"Ошибка: путь '{args[0]}' не найден")
+            return False
+
+        parent_path, name = resolved
+        parent = self._node_at(parent_path)
+        if parent is None or name not in parent.get("children", {}):
+            print(f"Ошибка: файл '{args[0]}' не найден")
+            return False
+        if parent["children"][name]["type"] != "file":
+            print(f"Ошибка: '{args[0]}' — не файл (папки удалять нельзя)")
+            return False
+
+        del parent["children"][name]
+        return True
+
+    def cmd_help(self, args):
+        """Выводит список команд с описанием."""
+        print("Доступные команды:")
+        print("  ls             - показать содержимое текущей папки")
+        print("  cd <путь>      - перейти в другую папку")
+        print("  whoami         - вывести имя пользователя")
+        print("  uname          - вывести информацию о системе")
+        print("  clear          - очистить экран")
+        print("  rm <файл>      - удалить файл из VFS")
+        print("  help           - вывести этот список")
+        print("  conf-dump      - вывести параметры эмулятора")
+        print("  exit           - выйти из эмулятора")
+        return True
+
     def cmd_exit(self, args):
         """Выход из эмулятора."""
         print("Выход.")
@@ -180,6 +248,8 @@ class ShellEmulator:
             "whoami": self.cmd_whoami,
             "uname": self.cmd_uname,
             "clear": self.cmd_clear,
+            "rm": self.cmd_rm,
+            "help": self.cmd_help,
             "conf-dump": self.cmd_conf_dump,
             "exit": self.cmd_exit,
         }
