@@ -1,4 +1,7 @@
 ls
 cd /home
+ls
+whoami
+uname
 conf-dump
-abracadabra
+clear

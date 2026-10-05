@@ -4,6 +4,9 @@ import argparse
 import shlex
 import zipfile
 from vfs import VFS
+import getpass
+import os
+import platform
 
 class ShellEmulator:
     """Эмулятор командной строки."""
@@ -20,6 +23,7 @@ class ShellEmulator:
         self.vfs_path = vfs_path
         self.script_path = script_path
         self.vfs = None
+        self.current_path = []
         self.running = True
     
     def print_config(self):
@@ -29,6 +33,10 @@ class ShellEmulator:
         print(f"vfs_path    = {self.vfs_path}")
         print(f"script_path = {self.script_path}")
         print("===========================")
+
+    def _get_node(self):
+        """Возвращает узел текущей папки."""
+        return self._node_at(self.current_path)
 
     def load_vfs(self):
         """Загружает VFS из ZIP-архива, если путь задан."""
@@ -59,20 +67,100 @@ class ShellEmulator:
         return parts[0], parts[1:]
 
     def cmd_ls(self, args):
-        """Заглушка команды ls."""
-        print(f"ls: аргументы = {args}")
+        """Показывает содержимое текущей папки."""
+        if self.vfs is None:
+            print("Ошибка: VFS не загружена")
+            return False
+        node = self._get_node()
+        if node is None or node["type"] != "dir":
+            print("Ошибка: текущая папка недоступна")
+            return False
+
+        names = sorted(node["children"].keys())
+        if not names:
+            return True
+
+        for name in names:
+            child = node["children"][name]
+            if child["type"] == "dir":
+                print(f"{name}/")
+            else:
+                print(name)
         return True
 
     def cmd_cd(self, args):
-        """Заглушка команды cd."""
-        print(f"cd: аргументы = {args}")
+        """Переход в другую папку."""
+        if self.vfs is None:
+            print("Ошибка: VFS не загружена")
+            return False
+        if not args:
+            self.current_path = []
+            return True
+
+        target = args[0]
+
+        if target.startswith("/"):
+            new_path = []
+            parts = [p for p in target.split("/") if p]
+        else:
+            new_path = list(self.current_path)
+            parts = [p for p in target.split("/") if p]
+
+        for part in parts:
+            if part == ".":
+                continue
+            if part == "..":
+                if new_path:
+                    new_path.pop()
+                continue
+            node = self._node_at(new_path)
+            if node is None or "children" not in node:
+                print(f"Ошибка: папка '{target}' не найдена")
+                return False
+            if part not in node["children"]:
+                print(f"Ошибка: папка '{target}' не найдена")
+                return False
+            child = node["children"][part]
+            if child["type"] != "dir":
+                print(f"Ошибка: '{target}' — не папка")
+                return False
+            new_path.append(part)
+
+        self.current_path = new_path
         return True
+
+    def _node_at(self, path):
+        """Возвращает узел дерева по указанному пути (список имён)."""
+        if self.vfs is None:
+            return None
+        node = self.vfs.root
+        for part in path:
+            if "children" not in node or part not in node["children"]:
+                return None
+            node = node["children"][part]
+        return node
 
     def cmd_conf_dump(self, args):
         """Служебная команда: выводит параметры эмулятора."""
         print(f"vfs_name    = {self.vfs_name}")
         print(f"vfs_path    = {self.vfs_path}")
         print(f"script_path = {self.script_path}")
+        return True
+
+    def cmd_whoami(self, args):
+        """Печатает имя текущего пользователя."""
+        print(getpass.getuser())
+        return True
+
+    def cmd_uname(self, args):
+        """Печатает информацию о системе."""
+        print(platform.system())
+        print(platform.release())
+        return True
+
+    def cmd_clear(self, args):
+        """Очищает экран консоли."""
+        os.system("cls" if os.name == "nt" else "clear")
         return True
 
     def cmd_exit(self, args):
@@ -89,6 +177,9 @@ class ShellEmulator:
         commands = {
             "ls": self.cmd_ls,
             "cd": self.cmd_cd,
+            "whoami": self.cmd_whoami,
+            "uname": self.cmd_uname,
+            "clear": self.cmd_clear,
             "conf-dump": self.cmd_conf_dump,
             "exit": self.cmd_exit,
         }
@@ -143,7 +234,7 @@ class ShellEmulator:
 
         while self.running:
             try:
-                user_input = input(f"{self.vfs_name}> ")
+                user_input = input(f"{self.vfs_name}{self._prompt_path()}> ")
             except (EOFError, KeyboardInterrupt):
                 print("\nВыход.")
                 break
@@ -151,6 +242,11 @@ class ShellEmulator:
             if command is None:
                 continue
             self.execute(command, args)
+    def _prompt_path(self):
+        """Возвращает путь для приглашения."""
+        if not self.current_path:
+            return ":/"
+        return ":/" + "/".join(self.current_path)
 
 
 def parse_args():
