@@ -11,8 +11,6 @@
 - Этап 4 — основные команды (`ls`, `cd`, `whoami`, `uname`, `clear`).
 - Этап 5 — дополнительные команды (`rm`, `help`).
 
-**Текущий статус:** завершён этап 2.
-
 ## Функции и настройки
 
 ### Интерфейс
@@ -41,6 +39,21 @@
 - Неправильные кавычки → сообщение об ошибке.
 - Файл скрипта не найден → сообщение об ошибке, остановка.
 - Ошибка в стартовом скрипте → сообщение с указанием строки, остановка.
+- Файл VFS не найден → сообщение об ошибке, остановка.
+- Файл VFS не является ZIP-архивом → сообщение об ошибке, остановка.
+
+### Виртуальная файловая система (VFS)
+- Загружается при запуске из ZIP-архива, указанного в `--vfs`.
+- Все операции производятся в памяти — исходный архив не изменяется.
+- Дерево файлов и папок хранится в виде вложенных словарей.
+- Текстовые файлы хранятся как есть, бинарные — в кодировке base64.
+- При загрузке выводится информация: имя VFS, количество файлов и папок.
+
+### Тестовые VFS
+Для проверки работы предусмотрены три архива, создаваемых скриптом `make_test_vfs.py`:
+- `vfs_minimal.zip` — 1 файл в корне.
+- `vfs_few_files.zip` — 3 файла в корне.
+- `vfs_deep.zip` — 3 файла, 4 уровня вложенности папок.
 
 ## Сборка и запуск
 
@@ -67,6 +80,24 @@ python src/main.py --help
 - `run_with_vfs.bat` — запуск только с параметром `--vfs`.
 - `run_with_script.bat` — запуск с параметрами `--vfs` и `--script`.
 
+### Генерация тестовых VFS
+```
+python make_test_vfs.py
+```
+Создаёт три ZIP-архива в корне проекта. Требуется один раз перед первым запуском.
+
+### Запуск с тестовыми VFS
+```
+python src/main.py --vfs vfs_minimal.zip
+python src/main.py --vfs vfs_few_files.zip
+python src/main.py --vfs vfs_deep.zip
+```
+
+Или через `.bat`-файлы:
+- `run_vfs_minimal.bat`
+- `run_vfs_few_files.bat`
+- `run_vfs_deep.bat`
+
 ### Запуск тестов
 Тесты будут добавлены позже.
 
@@ -74,7 +105,7 @@ python src/main.py --help
 
 ### Пример 1. Запуск с параметрами и выполнение команд вручную
 ```
-$ python src/main.py --vfs my_vfs.zip --script start.txt
+> python src/main.py --vfs my_vfs.zip --script start.txt
 === Параметры эмулятора ===
 vfs_name    = VFS
 vfs_path    = my_vfs.zip
@@ -118,7 +149,7 @@ VFS> abracadabra
 
 ### Пример 4. Файл скрипта не найден
 ```
-$ python src/main.py --script no_such_file.txt
+> python src/main.py --script no_such_file.txt
 === Параметры эмулятора ===
 vfs_name    = VFS
 vfs_path    = None
@@ -131,7 +162,7 @@ script_path = no_such_file.txt
 
 ### Пример 5. Справка
 ```
-$ python src/main.py --help
+> python src/main.py --help
 usage: main.py [-h] [--vfs VFS_PATH] [--script SCRIPT_PATH]
 
 Эмулятор оболочки ОС (Вариант 19)
@@ -140,4 +171,32 @@ options:
   -h, --help            show this help message and exit
   --vfs VFS_PATH        Путь к файлу VFS
   --script SCRIPT_PATH  Путь к стартовому скрипту
+```
+
+### Пример 6. Загрузка VFS из ZIP-архива
+```
+> python src/main.py --vfs vfs_deep.zip
+=== Параметры эмулятора ===
+vfs_name    = VFS
+vfs_path    = vfs_deep.zip
+script_path = None
+===========================
+Добро пожаловать в эмулятор VFS!
+Введите 'exit' для выхода.
+VFS 'my_vfs' загружена: 3 файлов, 4 папок
+VFS> exit
+Выход.
+```
+
+### Пример 7. Ошибка загрузки VFS
+```
+> python src/main.py --vfs no_such_file.zip
+=== Параметры эмулятора ===
+vfs_name    = VFS
+vfs_path    = no_such_file.zip
+script_path = None
+===========================
+Добро пожаловать в эмулятор VFS!
+Введите 'exit' для выхода.
+Ошибка: файл VFS 'no_such_file.zip' не найден
 ```
