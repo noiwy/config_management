@@ -28,18 +28,17 @@ def _make_zip(files):
 class TestParser(unittest.TestCase):
     """Тесты парсера команд."""
 
-    def setUp(self):
-        self.emulator = ShellEmulator()
-
     def test_simple_command(self):
         """Простая команда без аргументов."""
-        cmd, args = self.emulator.parse_command("ls")
+        emulator = ShellEmulator()
+        cmd, args = emulator.parse_command("ls")
         self.assertEqual(cmd, "ls")
         self.assertEqual(args, [])
 
     def test_quoted_args(self):
         """Аргументы в кавычках разбираются корректно."""
-        cmd, args = self.emulator.parse_command('cd "Моя папка"')
+        emulator = ShellEmulator()
+        cmd, args = emulator.parse_command('cd "Моя папка"')
         self.assertEqual(cmd, "cd")
         self.assertEqual(args, ["Моя папка"])
 
