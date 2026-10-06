@@ -66,28 +66,6 @@ class ShellEmulator:
             return None, []
         return parts[0], parts[1:]
 
-    def cmd_ls(self, args):
-        """Показывает содержимое текущей папки."""
-        if self.vfs is None:
-            print("Ошибка: VFS не загружена")
-            return False
-        node = self._get_node()
-        if node is None or node["type"] != "dir":
-            print("Ошибка: текущая папка недоступна")
-            return False
-
-        names = sorted(node["children"].keys())
-        if not names:
-            return True
-
-        for name in names:
-            child = node["children"][name]
-            if child["type"] == "dir":
-                print(f"{name}/")
-            else:
-                print(name)
-        return True
-
     def cmd_cd(self, args):
         """Переход в другую папку."""
         if self.vfs is None:
@@ -98,35 +76,13 @@ class ShellEmulator:
             return True
 
         target = args[0]
+        base, parts = self._path_base(target)
+        result = self._walk_path(base, parts)
+        if result is None:
+            print(f"Ошибка: папка '{target}' не найдена")
+            return False
 
-        if target.startswith("/"):
-            new_path = []
-            parts = [p for p in target.split("/") if p]
-        else:
-            new_path = list(self.current_path)
-            parts = [p for p in target.split("/") if p]
-
-        for part in parts:
-            if part == ".":
-                continue
-            if part == "..":
-                if new_path:
-                    new_path.pop()
-                continue
-            node = self._node_at(new_path)
-            if node is None or "children" not in node:
-                print(f"Ошибка: папка '{target}' не найдена")
-                return False
-            if part not in node["children"]:
-                print(f"Ошибка: папка '{target}' не найдена")
-                return False
-            child = node["children"][part]
-            if child["type"] != "dir":
-                print(f"Ошибка: '{target}' — не папка")
-                return False
-            new_path.append(part)
-
-        self.current_path = new_path
+        self.current_path = result
         return True
 
     def _node_at(self, path):
@@ -139,6 +95,54 @@ class ShellEmulator:
                 return None
             node = node["children"][part]
         return node
+
+    def _path_base(self, target):
+        """Определяет стартовую точку пути. Возвращает (base, parts)."""
+        if target.startswith("/"):
+            base = []
+        else:
+            base = list(self.current_path)
+        parts = [p for p in target.split("/") if p]
+        return base, parts
+
+    def _walk_path(self, base, parts):
+        """Проходит по частям пути. Возвращает итоговый путь или None."""
+        result = list(base)
+        for part in parts:
+            if part == ".":
+                continue
+            if part == "..":
+                if result:
+                    result.pop()
+                continue
+            node = self._node_at(result)
+            if node is None or "children" not in node:
+                return None
+            if part not in node["children"]:
+                return None
+            if node["children"][part]["type"] != "dir":
+                return None
+            result.append(part)
+        return result
+    def cmd_ls(self, args):
+        """Показывает содержимое текущей папки."""
+        if self.vfs is None:
+            print("Ошибка: VFS не загружена")
+            return False
+        node = self._get_node()
+        if node is None or node["type"] != "dir":
+            print("Ошибка: текущая папка недоступна")
+            return False
+        names = sorted(node["children"].keys())
+        if not names:
+            return True
+        for name in names:
+            child = node["children"][name]
+            if child["type"] == "dir":
+                print(f"{name}/")
+            else:
+                print(name)
+        return True
 
     def cmd_conf_dump(self, args):
         """Служебная команда: выводит параметры эмулятора."""
@@ -166,30 +170,13 @@ class ShellEmulator:
 
     def _resolve_path(self, target):
         """Разбирает путь. Возвращает (путь_родителя, имя) или None."""
-        if target.startswith("/"):
-            base = []
-            parts = [p for p in target.split("/") if p]
-        else:
-            base = list(self.current_path)
-            parts = [p for p in target.split("/") if p]
+        base, parts = self._path_base(target)
         if not parts:
             return None
-        for part in parts[:-1]:
-            if part == "..":
-                if base:
-                    base.pop()
-                continue
-            if part == ".":
-                continue
-            node = self._node_at(base)
-            if node is None or "children" not in node:
-                return None
-            if part not in node["children"]:
-                return None
-            if node["children"][part]["type"] != "dir":
-                return None
-            base.append(part)
-        return base, parts[-1]
+        parent = self._walk_path(base, parts[:-1])
+        if parent is None:
+            return None
+        return parent, parts[-1]
 
     def cmd_rm(self, args):
         """Удаляет файл из VFS (только в памяти)."""
